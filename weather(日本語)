@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html >
+	<head>
+		<meta charset="UTF-8">
+		<title>weather</title> 
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.9/css/weather-icons.css'>
+    <script>
+$(document).ready(function() {
+	
+	if ($("#location")[0]) {
+		var input = $('#location')[0];
+	}
+	var autocomplete = new google.maps.places.Autocomplete(input);
+	var lat = '';
+	var lng = '';
+	var locationToggled = false;
+	var beenHere = 0;
+	var offset = 0;
+	var running = false;
+	var celsius;
+	var temp;
+	console.log("celsius = " +celsius)
+	
+	$("#degreeToggle").on("click", function(e) {
+		e.preventDefault;
+		console.log(celsius);
+		if(celsius == undefined) {
+			celsius = false;
+			console.log(celsius);
+		}
+		celsius = !celsius;
+		console.log(celsius);
+		console.log("celsius = " +celsius);
+		if (celsius==true) {
+			$("#degree-icon").removeClass().addClass("wi wi-celsius");
+			$("#temp-icon").removeClass().addClass("wi wi-celsius icon-after");
+			if (temp) {
+				temp = (temp-32)/1.8;
+				console.log(temp);
+				$("#temp").html(Math.round(temp));
+			}
+		}
+		else {
+			$("#degree-icon").removeClass().addClass("wi wi-fahrenheit");
+			$("#temp-icon").removeClass().addClass("wi wi-fahrenheit icon-after");
+			if (temp) {
+				temp = (temp*1.8)+32;
+				$("#temp").html(Math.round(temp));
+			}
+		}
+	});
+	
+
+	$("#location-submit").on("click", function(e) {
+		e.preventDefault();
+		
+		if (locationToggled) {
+				$("#location-holder").css("position", "relative");
+				$("#location-holder").css("top", "0");
+			$("#location-holder").css("background-color", "#f00");
+				$("#weatherworld").css("margin-top", "0");
+				locationToggled = false;
+		}
+		
+		else if (locationToggled === false) {
+			submitLocation();
+			locationToggled = true;
+		}
+	});
+
+	function geocode(location) {
+		var geocoder = new google.maps.Geocoder();
+		geocoder.geocode({
+			"address": location,
+		}, function(results, status) {
+			if (status == "OK") {
+				var namedLocation = results[0].formatted_address;
+				lat = results[0].geometry.location.lat();
+				lng = results[0].geometry.location.lng();
+				weather(lat, lng, namedLocation);
+				var date = new Date();
+				var timestamp = Math.floor(date.getTime() / 1000);
+				var dateUTC = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+				var timestampUTC = Math.floor((dateUTC.getTime() / 1000));
+				running = true;
+				lookupTimezone(lat, lng, timestamp, timestampUTC, results, status);
+			}
+		});
+	}
+	function lookupTimezone(lat, lng, timestamp, timestampUTC, response, status) {
+		var url = "https://maps.googleapis.com/maps/api/timezone/json?";
+		url += "location=" + lat + "," + lng
+		url += "&timestamp=" + timestamp;
+		if (running) {
+			$.ajax({
+				url: url,
+			}).done(function(response) {
+				if (response.status == "OK") {
+					offset = response.rawOffset + response.dstOffset;
+					var local = timestampUTC + offset;
+					var localDate = new Date(local * 1000);
+					var monthNames = ["１月", "２月", "３月", "４月", "５月", "６月","７月", "８月", "９月", "１０月", "１１月","１２月",];
+					var localMonth = parseInt(localDate.toString("M"));
+					var localMonthName = monthNames[localMonth - 1];
+					var localTimeDay = localDate.toString("d, yyyy hh:mm tt");
+					localDate = localMonthName;
+					localDate += " " + localTimeDay;
+					$("#timezone").html("時間帯:" + response.timeZoneName + ".");
+					$("#time-date").html(localDate.toString());
+				}
+
+			});
+
+		}
+		
+	}
+	
+	function submitLocation() {
+		var location = $("#location").val();
+		if (location != "") {
+			geocode(location);
+
+		}
+	}
+	
+	function weather(lat, lng, namedLocation) {
+		var namedLocation = namedLocation;
+		$.ajax({
+			url: 'http://api.openweathermap.org/data/2.5/weather?&APPID=79f968106b20734a2235e27dfa6b051e',
+			dataType: 'jsonp',
+			data: {
+				lat: lat,
+				lon: lng,
+				units: "imperial",
+			},
+			cache: false,
+			success: function(response) {
+				console.log(response);
+				var icon = response.weather[0].icon
+				display(response, namedLocation, icon);
+			},
+			error: function(error) {
+				console.log("error " + error);
+				console.log(error);
+			}
+		});
+	}
+	
+	function weatherIcon(icon) {
+		$("#weather-icon").removeClass().addClass("wi");
+		switch(icon) {
+			case "01d":
+				$("#weather-icon").addClass("wi-day-sunny");
+				break;
+			case "01n":
+				$("#weather-icon").addClass("wi-night-clear");
+				break;
+			case "02d":
+				$("#weather-icon").addClass("wi-day-sunny-overcast");
+				break;
+			case "02n":
+				$("#weather-icon").addClass("wi-night-partly-cloudy");
+				break;
+			case "03d":
+				$("#weather-icon").addClass("wi-day-sunny-overcast");
+				break;
+			case "03n":
+				$("#weather-icon").addClass("wi-night-partly-cloudy");
+				break;
+			case "04d":
+				$("#weather-icon").addClass("wi-cloudy");
+				break;
+			case "04n":
+				$("#weather-icon").addClass("wi-cloudy");
+				break;
+			case "09d":
+				$("#weather-icon").addClass("wi-day-showers");
+				break;
+			case "09n":
+				$("#weather-icon").addClass("wi-night-showers");
+				break;
+			case "10d":
+				$("#weather-icon").addClass("wi-day-rain");
+				break;
+			case "10n":
+				$("#weather-icon").addClass("wi-night-rain");
+				break;
+			case "11d":
+				$("#weather-icon").addClass("wi-day-sunny");
+				break;
+			case "11n":
+				$("#weather-icon").addClass("wi-night-clear");
+				break;
+			case "13d":
+				$("#weather-icon").addClass("wi-thunderstorm");
+				break;
+			case "13n":
+				$("#weather-icon").addClass("wi-thunderstorm");
+				break;
+			case "50d":
+				$("#weather-icon").addClass("wi-day-fog");
+				break;
+			case "50n":
+				$("#weather-icon").addClass("wi-night-fog");
+				break;
+			default:
+				return;
+		}
+	}
+	
+	function display(response, namedLocation, icon) {
+		$("#weatherworld").fadeOut(1000, function(){
+			$("#location-submit").html("検索");
+			$("#weatherworld").css("margin-top", "0em");
+			temp = response.main.temp;
+			if (celsius == true) {
+				temp = (temp-32)/1.8;
+				console.log(temp);
+			}
+			$("#temp").html(Math.round(temp));
+			$("#humidity").html(response.main.humidity);
+			var sunsetTimestamp = response.sys.sunset;
+			var sunriseTimestamp = response.sys.sunrise;
+			var localSunset = msToTime((sunsetTimestamp+offset)*1000);
+			var localSunrise = msToTime((sunriseTimestamp+offset)*1000);
+			$("#sunset").html(localSunset);
+			$("#sunrise").html(localSunrise);
+			function msToTime(duration) {
+        		var milliseconds = parseInt((duration%1000)/100)
+            , seconds = parseInt((duration/1000)%60)
+            , minutes = parseInt((duration/(1000*60))%60)
+            , hours = parseInt((duration/(1000*60*60))%24);
+        		minutes = (minutes < 10) ? "0" + minutes : minutes;
+        		seconds = (seconds < 10) ? "0" + seconds : seconds;
+				var ampm = '';
+				if (hours > 12) {
+					hours -=12;
+					ampm = "午後";
+				}
+				else {
+					ampm = "午前";
+				}
+        		return ampm　+" "+ hours + ":" + minutes;
+    		}
+			weatherIcon(icon);
+			$("#weather-name").html(response.weather[0].main);
+			$("#namedLocation").html(response.name+" \("+namedLocation+"\)");
+			$("#location-holder").css("position", "absolute");
+			$("#location-holder").css("background-color", "transparent");
+			$("#location-holder").css("top", "-6em");
+			$("#location").val("");
+		});
+		$("#weatherworld").fadeIn(500);
+	}
+});
+    </script>
+		<style>
+body {
+	font: 14px Meiryo, sans-serif;
+	cursor:default;
+}
+#label{
+	background:#fff;
+}
+#container{
+	color:#FFF;
+	width:330px;
+	position:absolute;
+	top:20px;
+	left:10px;
+	border-radius:10px;
+	padding: 12px 20px 12px 12px;
+	position: relative;
+    z-index: 1;
+}
+#container:before{
+	content: "";
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+	background-color:#000;
+	opacity:0.6;
+	filter:blur(1px);
+	border-radius: 10px;
+}
+tgl{
+	display:none;
+}
+inv{
+	display:none;
+}
+.search {
+  display: inline-block;
+  padding: 5px 6px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  outline: none;
+  border:none;
+  color: #fff;
+  background-color: #88f;
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
+}
+.search:hover {
+	background-color: #11f
+}
+.box{
+	font-size:12px;
+	color:#000;
+	box-sizing: border-box;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+    background-position: 10px 10px; 
+    background-repeat: no-repeat;
+    padding: 3px 3px 3px 3px;
+    -webkit-transition: width 0.4s ease-in-out;
+    transition: width 0.4s ease-in-out;
+}
+i#weather-icon {
+	font-size: 4em;
+	color: white;
+	
+}
+#degreeToggle {
+  display: inline-block;
+  padding: 3px 3px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  outline: none;
+  border:none;
+  color: #fff;
+  background-color: #88f;
+  border-radius:5px;
+}
+#degreeToggle:hover {
+	background-color: #11f
+}
+    </style>
+		<script>
+			$(document).ready(function(){
+				$("button").click(function(){
+					$("tgl").fadeToggle();
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div id="container">
+			<form>
+				<input class="box" id="location" placeholder='検索...'></input>
+				<button class ="search" id="location-submit">検索</button>
+				<tgl>
+					<div id="degreeToggle" class="search2">
+						<i class="wi wi-fahrenheit" id="degree-icon"></i>
+					</div>
+				</tgl>
+			</form>			
+			<section id="weatherworld">
+				<tgl>
+					<span id="namedLocation"></span><br><br>
+					<span><i id="weather-icon" class="wi"></i></span><br><br>
+					<span id="weather-name" class="result"></span><br>
+					現地時間: <span id="time-date"></span><br>
+					気温:<span class="result"><span  id="temp"></span><i id="temp-icon" class="wi wi-fahrenheit icon-after"></i></span><br>
+					湿度: <span class="result"> <span id="humidity"></span>%</span><br>
+					日の出:<span class="result" id="sunrise"></span><br>
+					日の入:<span class="result" id="sunset"></span><br> 
+					<span id="timezone"></span>
+				</tgl>
+			</section>
+		</div>
+		<script src='http://maps.google.com/maps/api/js?key=AIzaSyCLhTLBLvGiw6qYXu3K_bTAZfVLtmpqIUQ&libraries=places'></script>
+		<script src='http://www.datejs.com/build/date.js'></script>
+	</body>
+</html>
